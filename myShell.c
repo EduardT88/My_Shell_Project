@@ -1,49 +1,68 @@
 #include "myShell.h"
 #include "myFunction.h"
 
-// Define a structure to associate command names with their corresponding functions.
-typedef struct
-{
-    char *command;         // The command name
-    void (*func)(char **); // Pointer to the function that implements the command
-} CommandFunc;
 int main()
 {
-    CommandFunc commands[] = {
-        {"echo", echo},
-        {"cd", cd},
-        {"cp", cp}};
-    // Calculate the number of commands in the array for iteration purposes
-    int numCommands = sizeof(commands) / sizeof(CommandFunc);
     welcome();
     while (1)
     {
         getLocation();
         char *input = getInputFromUser();
         if (strcmp(input, "exit") == 0 || strncmp(input, "exit ", 5) == 0)
-        {
             logout(input);
-            free(input);
-            break;
-        }
-        // Split the input into command and arguments for processing.
-        char **arguments = splitArgument(input);
-        int found = 0;
-        for (int i = 0; i < numCommands; i++)
-        {
-            if (strcmp(input, commands[i].command) == 0)
-            {
-                commands[i].func(arguments);
-                found = 1;
-                break;
-            }
-        }
-        if (!found)
-        {
-            printf("Command not found: %s\n", input);
-        }
 
-        free(arguments);
+        if (strchr(input, '|') != NULL)
+        {
+            // If input contains '|', we assume it's a pipe command
+            char **argv1, **argv2;
+            splitInputForPipe(input, &argv1, &argv2);
+
+            // Execute the piped commands
+            mypipe(argv1, argv2);
+
+            // Wait for all child processes to finish
+            int status;
+            while (wait(&status) > 0)
+                ;
+
+            // Free the memory allocated for the arguments
+            for (int i = 0; argv1[i] != NULL; i++)
+            {
+                free(argv1[i]);
+            }
+            for (int i = 0; argv2[i] != NULL; i++)
+            {
+                free(argv2[i]);
+            }
+            free(argv1);
+            free(argv2);
+        }
+        else
+        {
+            // Process other commands if no pipe is found
+            char **arguments = splitArgument(input);
+
+            if (strcmp(input, "echo") == 0)
+                echo(arguments);
+            else if (strcmp(input, "cd") == 0)
+                cd(arguments);
+            else if (strcmp(input, "cp") == 0)
+                cp(arguments);
+            else if (strcmp(input, "delete") == 0)
+                delete (arguments);
+            else if (strcmp(input, "move") == 0)
+                move(arguments);
+            else if (strcmp(input, "cat") == 0)
+                echoppend(arguments);
+            else if (strcmp(input, "wrt") == 0)
+                echowrite(arguments);
+            else if (strcmp(input, "rd") == 0)
+                rd(arguments);
+            else if (strcmp(input, "wc") == 0)
+                wordCount(arguments);
+
+            free(arguments);
+        }
         free(input);
     }
     return 0;
